@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Outlook AI Assistant</title>
+    
+    <!-- Office.js API -->
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    
+    <!-- Modern CSS Framework -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 15px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .suggestion-tools {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .tool-btn {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            color: white;
+            border: none;
+            padding: 15px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            min-height: 80px;
+        }
+
+        .tool-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(66, 153, 225, 0.3);
+        }
+
+        .tool-btn:active {
+            transform: translateY(0);
+        }
+
+        .tool-btn.formal {
+            background: linear-gradient(135deg, #805ad5 0%, #6b46c1 100%);
+        }
+
+        .tool-btn.casual {
+            background: linear-gradient(135deg, #38b2ac 0%, #319795 100%);
+        }
+
+        .tool-btn.shorter {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        }
+
+        .tool-btn i {
+            font-size: 18px;
+        }
+
+        .custom-section {
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #4a5568;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        textarea, input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .generate-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(72, 187, 120, 0.3);
+        }
+
+        .generate-btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .result-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(237, 242, 247, 0.5);
+            border-radius: 12px;
+            border-left: 4px solid #4299e1;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #718096;
+            font-style: italic;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e2e8f0;
+            border-top: 2px solid #4299e1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .feedback-section {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .feedback-btn {
+            padding: 8px 15px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .feedback-btn.positive:hover {
+            background: #c6f6d5;
+            border-color: #48bb78;
+        }
+
+        .feedback-btn.negative:hover {
+            background: #fed7d7;
+            border-color: #f56565;
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 20px;
+            color: #718096;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-brain"></i>
+            </div>
+            <h1>AI Assistant</h1>
+            <p class="subtitle">Smart email writing companion</p>
+        </div>
+
+        <div class="suggestion-tools">
+            <button class="tool-btn improve" onclick="quickSuggest('improve')">
+                <i class="fas fa-magic"></i>
+                <span>Improve</span>
+            </button>
+            <button class="tool-btn formal" onclick="quickSuggest('formal')">
+                <i class="fas fa-tie"></i>
+                <span>Formal</span>
+            </button>
+            <button class="tool-btn casual" onclick="quickSuggest('casual')">
+                <i class="fas fa-smile"></i>
+                <span>Casual</span>
+            </button>
+            <button class="tool-btn shorter" onclick="quickSuggest('shorter')">
+                <i class="fas fa-compress-alt"></i>
+                <span>Shorter</span>
+            </button>
+        </div>
+
+        <div class="custom-section">
+            <div class="input-group">
+                <label for="customPrompt">Custom instruction:</label>
+                <input type="text" id="customPrompt" placeholder="e.g., Make it more professional, Add urgency...">
+            </div>
+            
+            <div class="input-group">
+                <label for="emailContext">Email content (optional):</label>
+                <textarea id="emailContext" placeholder="Paste your draft email here for AI to improve..."></textarea>
+            </div>
+
+            <button class="generate-btn" onclick="generateCustom()" id="generateBtn">
+                <i class="fas fa-sparkles"></i> Generate Suggestion
+            </button>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <div class="loading" id="loadingDiv">
+                <div class="spinner"></div>
+                <span>Generating suggestion...</span>
+            </div>
+            <div id="suggestionResult" style="display: none;">
+                <h4>AI Suggestion:</h4>
+                <p id="suggestionText"></p>
+                <div class="feedback-section">
+                    <button class="feedback-btn positive" onclick="sendFeedback(true)">
+                        <i class="fas fa-thumbs-up"></i> Helpful
+                    </button>
+                    <button class="feedback-btn negative" onclick="sendFeedback(false)">
+                        <i class="fas fa-thumbs-down"></i> Not helpful
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="status" id="status">
+            Ready to assist with your email writing
+        </div>
+    </div>
+
+    <script>
+        // Backend API endpoint - update with your Azure deployment URL
+        const API_BASE_URL = 'https://outlook-ai-backend.azurewebsites.net';
+        
+        // Office.js initialization - with fallback
+        let isOfficeReady = false;
+        
+        function initializeOffice() {
+            if (typeof Office !== 'undefined') {
+                Office.onReady((info) => {
+                    isOfficeReady = true;
+                    if (info.host === Office.HostType.Outlook) {
+                        document.getElementById('status').textContent = 'Connected to Outlook';
+                    } else {
+                        document.getElementById('status').textContent = 'Office loaded (not in Outlook)';
+                    }
+                });
+            } else {
+                // Fallback for testing outside Outlook
+                document.getElementById('status').textContent = 'Running in standalone mode';
+                console.log('Office.js not available - running in standalone mode');
+            }
+        }
+        
+        // Wait for Office.js to load
+        if (typeof Office !== 'undefined') {
+            initializeOffice();
+        } else {
+            // Retry after a delay
+            setTimeout(initializeOffice, 1000);
+        }
+
+        // Quick suggestion functions
+        async function quickSuggest(type) {
+            const emailContent = await getCurrentEmailContent();
+            const prompts = {
+                improve: 'Improve the writing quality and clarity of this email',
+                formal: 'Make this email more formal and professional',
+                casual: 'Make this email more casual and friendly',
+                shorter: 'Make this email more concise and to the point'
+            };
+            
+            await generateSuggestion(prompts[type], emailContent);
+        }
+
+        // Custom suggestion generation
+        async function generateCustom() {
+            const customPrompt = document.getElementById('customPrompt').value;
+            const emailContext = document.getElementById('emailContext').value;
+            
+            if (!customPrompt.trim()) {
+                alert('Please enter a custom instruction');
+                return;
+            }
+
+            const emailContent = emailContext || await getCurrentEmailContent();
+            await generateSuggestion(customPrompt, emailContent);
+        }
+
+        // Get current email content from Outlook
+        async function getCurrentEmailContent() {
+            return new Promise((resolve) => {
+                if (!isOfficeReady || typeof Office === 'undefined') {
+                    console.log('Office not ready, using fallback');
+                    resolve('');
+                    return;
+                }
+                
+                try {
+                    if (Office.context && Office.context.mailbox && Office.context.mailbox.item) {
+                        Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, (result) => {
+                            if (result.status === Office.AsyncResultStatus.Succeeded) {
+                                resolve(result.value);
+                            } else {
+                                console.log('Could not get email content:', result.error);
+                                resolve('');
+                            }
+                        });
+                    } else {
+                        console.log('Office context not available');
+                        resolve('');
+                    }
+                } catch (error) {
+                    console.log('Error getting email content:', error);
+                    resolve('');
+                }
+            });
+        }
+
+        // Generate AI suggestion
+        async function generateSuggestion(prompt, emailContent) {
+            const resultSection = document.getElementById('resultSection');
+            const loadingDiv = document.getElementById('loadingDiv');
+            const suggestionResult = document.getElementById('suggestionResult');
+            const suggestionText = document.getElementById('suggestionText');
+            const generateBtn = document.getElementById('generateBtn');
+
+            // Show loading
+            resultSection.classList.add('show');
+            loadingDiv.style.display = 'flex';
+            suggestionResult.style.display = 'none';
+            generateBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        emailContent: emailContent,
+                        context: {
+                            recipientCount: 1,
+                            emailType: 'general'
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Show result
+                loadingDiv.style.display = 'none';
+                suggestionResult.style.display = 'block';
+                suggestionText.textContent = data.suggestion;
+
+            } catch (error) {
+                console.error('Error generating suggestion:', error);
+                loadingDiv.style.display = 'none';
+                suggestionResult.style.display = 'block';
+                suggestionText.textContent = 'Sorry, I could not generate a suggestion right now. Please try again later.';
+            } finally {
+                generateBtn.disabled = false;
+            }
+        }
+
+        // Send feedback to learning engine
+        async function sendFeedback(isHelpful) {
+            try {
+                await fetch(`${API_BASE_URL}/api/ai/feedback`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        feedback: isHelpful ? 'positive' : 'negative',
+                        suggestion: document.getElementById('suggestionText').textContent
+                    })
+                });
+
+                document.getElementById('status').textContent = 
+                    isHelpful ? 'Thank you for the positive feedback!' : 'Thank you for the feedback!';
+                
+                setTimeout(() => {
+                    document.getElementById('status').textContent = 'Ready to assist with your email writing';
+                }, 3000);
+
+            } catch (error) {
+                console.error('Error sending feedback:', error);
+            }
+        }
+
+        // Insert suggestion into email
+        function insertSuggestion() {
+            const suggestion = document.getElementById('suggestionText').textContent;
+            
+            if (!isOfficeReady || typeof Office === 'undefined') {
+                // Fallback: copy to clipboard
+                navigator.clipboard.writeText(suggestion).then(() => {
+                    document.getElementById('status').textContent = 'Suggestion copied to clipboard';
+                }).catch(() => {
+                    document.getElementById('status').textContent = 'Could not copy suggestion';
+                });
+                return;
+            }
+            
+            try {
+                if (Office.context && Office.context.mailbox && Office.context.mailbox.item) {
+                    Office.context.mailbox.item.body.setSelectedDataAsync(
+                        suggestion,
+                        { coercionType: Office.CoercionType.Text },
+                        (result) => {
+                            if (result.status === Office.AsyncResultStatus.Succeeded) {
+                                document.getElementById('status').textContent = 'Suggestion inserted into email';
+                            } else {
+                                document.getElementById('status').textContent = 'Could not insert suggestion';
+                                // Fallback to clipboard
+                                navigator.clipboard.writeText(suggestion);
+                            }
+                        }
+                    );
+                } else {
+                    // Fallback to clipboard
+                    navigator.clipboard.writeText(suggestion).then(() => {
+                        document.getElementById('status').textContent = 'Suggestion copied to clipboard';
+                    });
+                }
+            } catch (error) {
+                console.error('Error inserting suggestion:', error);
+                navigator.clipboard.writeText(suggestion).then(() => {
+                    document.getElementById('status').textContent = 'Suggestion copied to clipboard';
+                });
+            }
+        }
+
+        // Add insert button to suggestion result
+        document.addEventListener('DOMContentLoaded', () => {
+            const feedbackSection = document.querySelector('.feedback-section');
+            if (feedbackSection) {
+                const insertBtn = document.createElement('button');
+                insertBtn.className = 'feedback-btn';
+                insertBtn.innerHTML = '<i class="fas fa-plus"></i> Insert';
+                insertBtn.onclick = insertSuggestion;
+                feedbackSection.appendChild(insertBtn);
+            }
+        });
+    </script>
+</body>
+</html>
