@@ -334,7 +334,7 @@
 
     <script>
         // Backend API endpoint - update with your Azure deployment URL
-       // const API_BASE_URL = 'https://outlook-ai-backend.azurewebsites.net';
+        //const API_BASE_URL = 'https://outlook-ai-backend.azurewebsites.net';
 		const API_BASE_URL = 'https://outlook-ai-backend-djerd0cve5aba2aw.westus2-01.azurewebsites.net';
         
         // Office.js initialization - with fallback
@@ -349,11 +349,25 @@
                     } else {
                         document.getElementById('status').textContent = 'Office loaded (not in Outlook)';
                     }
+                    // Initialize authentication
+                    initializeAuth();
                 });
             } else {
                 // Fallback for testing outside Outlook
                 document.getElementById('status').textContent = 'Running in standalone mode';
                 console.log('Office.js not available - running in standalone mode');
+                // Initialize authentication
+                initializeAuth();
+            }
+        }
+        
+        // Initialize authentication on load
+        async function initializeAuth() {
+            try {
+                await getAuthToken();
+                document.getElementById('status').textContent = 'Ready to assist with your email writing';
+            } catch (error) {
+                document.getElementById('status').textContent = 'Authentication failed - some features may not work';
             }
         }
         
@@ -443,6 +457,12 @@
             generateBtn.disabled = true;
 
             try {
+                // Get authentication token
+                const token = await getAuthToken();
+                if (!token) {
+                    throw new Error('Authentication failed. Please try again.');
+                }
+
                 const requestData = {
                     prompt: prompt,
                     content: emailContent || 'Please provide a professional email template.',
@@ -465,7 +485,8 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify(requestData)
                 });
