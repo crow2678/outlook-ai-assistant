@@ -349,9 +349,68 @@
                 return authToken;
             }
             
-            // For now, skip authentication and try direct API call
-            // Your backend might not require auth or use different endpoints
-            return 'demo-token';
+            try {
+                // First, try to register a user via the backend user endpoint
+                console.log('Attempting to register/login user...');
+                
+                const registerResponse = await fetch(`${API_BASE_URL}/api/users/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'demo@outlook.com',
+                        password: 'demo123456',
+                        name: 'Demo User'
+                    })
+                });
+                
+                if (registerResponse.ok) {
+                    const data = await registerResponse.json();
+                    authToken = data.token;
+                    console.log('Registration successful');
+                    return authToken;
+                }
+                
+                // If registration fails, try login
+                const loginResponse = await fetch(`${API_BASE_URL}/api/users/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'demo@outlook.com',
+                        password: 'demo123456'
+                    })
+                });
+                
+                if (loginResponse.ok) {
+                    const loginData = await loginResponse.json();
+                    authToken = loginData.token;
+                    console.log('Login successful');
+                    return authToken;
+                }
+                
+                // If both fail, try auth endpoints
+                const authLoginResponse = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'demo@outlook.com',
+                        password: 'demo123456'
+                    })
+                });
+                
+                if (authLoginResponse.ok) {
+                    const authData = await authLoginResponse.json();
+                    authToken = authData.token;
+                    console.log('Auth login successful');
+                    return authToken;
+                }
+                
+                console.error('All authentication methods failed');
+                return null;
+                
+            } catch (error) {
+                console.error('Authentication error:', error);
+                return null;
+            }
         }
 
         // Office.js functions
@@ -464,9 +523,13 @@
             generateBtn.disabled = true;
 
             try {
-                // Try without authentication first
-                console.log('Trying request without authentication...');
+                console.log('Getting authentication token...');
+                const token = await getAuthToken();
                 
+                if (!token) {
+                    throw new Error('Could not get valid authentication token. Please check console for details.');
+                }
+
                 const requestData = {
                     prompt: prompt,
                     content: emailContent || 'Please provide a professional email template.',
@@ -483,33 +546,17 @@
                     }
                 };
 
-                console.log('Sending request:', requestData);
+                console.log('Sending authenticated request:', requestData);
 
-                // First try without auth
-                let response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
+                const response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify(requestData)
                 });
-
-                // If that fails, try with token
-                if (!response.ok && response.status === 401) {
-                    console.log('Trying with authentication token...');
-                    const token = await getAuthToken();
-                    
-                    response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify(requestData)
-                    });
-                }
 
                 console.log('Response status:', response.status);
                 
@@ -598,10 +645,15 @@
 
         async function initializeAuth() {
             try {
-                await getAuthToken();
-                document.getElementById('status').textContent = 'Ready to assist with your email writing';
+                const token = await getAuthToken();
+                if (token) {
+                    document.getElementById('status').textContent = 'Authentication successful - Ready to assist';
+                } else {
+                    document.getElementById('status').textContent = 'Authentication failed - Please check console for details';
+                }
             } catch (error) {
-                document.getElementById('status').textContent = 'Authentication failed - some features may not work';
+                console.error('Auth initialization error:', error);
+                document.getElementById('status').textContent = 'Authentication error - Check console for details';
             }
         }
 
