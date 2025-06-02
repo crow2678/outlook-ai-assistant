@@ -399,8 +399,9 @@
                 
                 if (authLoginResponse.ok) {
                     const authData = await authLoginResponse.json();
-                    authToken = authData.token;
-                    console.log('Auth login successful');
+                    console.log('Auth response:', authData); // Debug the response
+                    authToken = authData.token || authData.accessToken || authData.jwt;
+                    console.log('Auth login successful, token:', authToken);
                     return authToken;
                 }
                 
@@ -546,14 +547,17 @@
                     }
                 };
 
-                console.log('Sending authenticated request:', requestData);
+                console.log('Sending authenticated request with token:', token?.substring(0, 20) + '...');
+                console.log('Request data:', requestData);
 
                 const response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${token}`,
+                        'X-User-ID': 'demo-user', // Sometimes backends need explicit user ID
+                        'X-Requested-With': 'XMLHttpRequest' // Some backends require this
                     },
                     body: JSON.stringify(requestData)
                 });
