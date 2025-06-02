@@ -323,6 +323,9 @@
                     <button class="feedback-btn negative" onclick="sendFeedback(false)">
                         <i class="fas fa-thumbs-down"></i> Not helpful
                     </button>
+                    <button class="feedback-btn" onclick="insertSuggestion()">
+                        <i class="fas fa-plus"></i> Insert
+                    </button>
                 </div>
             </div>
         </div>
@@ -333,53 +336,126 @@
     </div>
 
     <script>
-        // Backend API endpoint - update with your Azure deployment URL
-        //const API_BASE_URL = 'https://outlook-ai-backend.azurewebsites.net';
-		const API_BASE_URL = 'https://outlook-ai-backend-djerd0cve5aba2aw.westus2-01.azurewebsites.net';
+        // Backend API endpoint
+        const API_BASE_URL = 'https://outlook-ai-backend-djerd0cve5aba2aw.westus2-01.azurewebsites.net';
+		
         
-        // Office.js initialization - with fallback
+        // Global variables
+        let authToken = null;
         let isOfficeReady = false;
-        
-        function initializeOffice() {
-            if (typeof Office !== 'undefined') {
-                Office.onReady((info) => {
-                    isOfficeReady = true;
-                    if (info.host === Office.HostType.Outlook) {
-                        document.getElementById('status').textContent = 'Connected to Outlook';
-                    } else {
-                        document.getElementById('status').textContent = 'Office loaded (not in Outlook)';
-                    }
-                    // Initialize authentication
-                    initializeAuth();
-                });
-            } else {
-                // Fallback for testing outside Outlook
-                document.getElementById('status').textContent = 'Running in standalone mode';
-                console.log('Office.js not available - running in standalone mode');
-                // Initialize authentication
-                initializeAuth();
+
+        // Authentication functions
+        async function getAuthToken() {
+            if (authToken) {
+                return authToken;
             }
-        }
-        
-        // Initialize authentication on load
-        async function initializeAuth() {
+            
             try {
-                await getAuthToken();
-                document.getElementById('status').textContent = 'Ready to assist with your email writing';
+                // Try to register demo user
+                const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'demo@outlook.com',
+                        password: 'demo123',
+                        name: 'Demo User'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.token;
+                    return authToken;
+                } else {
+                    // If registration fails, try login
+                    const loginResponse = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: 'demo@outlook.com',
+                            password: 'demo123'
+                        })
+                    });
+                    
+                    if (loginResponse.ok) {
+                        const loginData = await loginResponse.json();
+                        authToken = loginData.token;
+                        return authToken;
+                    }
+                }
             } catch (error) {
-                document.getElementById('status').textContent = 'Authentication failed - some features may not work';
+                console.error('Authentication error:', error);
             }
-        }
-        
-        // Wait for Office.js to load
-        if (typeof Office !== 'undefined') {
-            initializeOffice();
-        } else {
-            // Retry after a delay
-            setTimeout(initializeOffice, 1000);
+            
+            return null;
         }
 
-        // Quick suggestion functions
+        // Office.js functions
+        async function getCurrentEmailContent() {
+            return new Promise((resolve) => {
+                if (!isOfficeReady || typeof Office === 'undefined') {
+                    resolve('');
+                    return;
+                }
+                
+                try {
+                    if (Office.context && Office.context.mailbox && Office.context.mailbox.item) {
+                        Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, (result) => {
+                            if (result.status === Office.AsyncResultStatus.Succeeded) {
+                                resolve(result.value);
+                            } else {
+                                resolve('');
+                            }
+                        });
+                    } else {
+                        resolve('');
+                    }
+                } catch (error) {
+                    console.log('Error getting email content:', error);
+                    resolve('');
+                }
+            });
+        }
+
+        function insertSuggestion() {
+            const suggestion = document.getElementById('suggestionText').textContent;
+            
+            if (!isOfficeReady || typeof Office === 'undefined') {
+                navigator.clipboard.writeText(suggestion).then(() => {
+                    document.getElementById('status').textContent = 'Suggestion copied to clipboard';
+                }).catch(() => {
+                    document.getElementById('status').textContent = 'Could not copy suggestion';
+                });
+                return;
+            }
+            
+            try {
+                if (Office.context && Office.context.mailbox && Office.context.mailbox.item) {
+                    Office.context.mailbox.item.body.setSelectedDataAsync(
+                        suggestion,
+                        { coercionType: Office.CoercionType.Text },
+                        (result) => {
+                            if (result.status === Office.AsyncResultStatus.Succeeded) {
+                                document.getElementById('status').textContent = 'Suggestion inserted into email';
+                            } else {
+                                navigator.clipboard.writeText(suggestion);
+                                document.getElementById('status').textContent = 'Suggestion copied to clipboard';
+                            }
+                        }
+                    );
+                } else {
+                    navigator.clipboard.writeText(suggestion).then(() => {
+                        document.getElementById('status').textContent = 'Suggestion copied to clipboard';
+                    });
+                }
+            } catch (error) {
+                navigator.clipboard.writeText(suggestion).then(() => {
+                    document.getElementById('status').textContent = 'Suggestion copied to clipboard';
+                });
+            }
+        }
+
+        // AI suggestion functions
         async function quickSuggest(type) {
             const emailContent = await getCurrentEmailContent();
             const prompts = {
@@ -392,13 +468,11 @@
             await generateSuggestion(prompts[type], emailContent);
         }
 
-        // Custom suggestion generation
         async function generateCustom() {
             const customPrompt = document.getElementById('customPrompt').value;
             const emailContext = document.getElementById('emailContext').value;
             
             if (!customPrompt.trim()) {
-                // Replace alert with custom notification
                 document.getElementById('status').textContent = 'Please enter a custom instruction';
                 document.getElementById('status').style.color = 'red';
                 setTimeout(() => {
@@ -412,37 +486,6 @@
             await generateSuggestion(customPrompt, emailContent);
         }
 
-        // Get current email content from Outlook
-        async function getCurrentEmailContent() {
-            return new Promise((resolve) => {
-                if (!isOfficeReady || typeof Office === 'undefined') {
-                    console.log('Office not ready, using fallback');
-                    resolve('');
-                    return;
-                }
-                
-                try {
-                    if (Office.context && Office.context.mailbox && Office.context.mailbox.item) {
-                        Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, (result) => {
-                            if (result.status === Office.AsyncResultStatus.Succeeded) {
-                                resolve(result.value);
-                            } else {
-                                console.log('Could not get email content:', result.error);
-                                resolve('');
-                            }
-                        });
-                    } else {
-                        console.log('Office context not available');
-                        resolve('');
-                    }
-                } catch (error) {
-                    console.log('Error getting email content:', error);
-                    resolve('');
-                }
-            });
-        }
-
-        // Generate AI suggestion
         async function generateSuggestion(prompt, emailContent) {
             const resultSection = document.getElementById('resultSection');
             const loadingDiv = document.getElementById('loadingDiv');
@@ -457,7 +500,6 @@
             generateBtn.disabled = true;
 
             try {
-                // Get authentication token
                 const token = await getAuthToken();
                 if (!token) {
                     throw new Error('Authentication failed. Please try again.');
@@ -502,7 +544,6 @@
                 const data = await response.json();
                 console.log('Success response:', data);
                 
-                // Show result
                 loadingDiv.style.display = 'none';
                 suggestionResult.style.display = 'block';
                 suggestionText.textContent = data.suggestion || data.message || 'AI suggestion generated successfully';
@@ -517,13 +558,16 @@
             }
         }
 
-        // Send feedback to learning engine
         async function sendFeedback(isHelpful) {
             try {
+                const token = await getAuthToken();
+                if (!token) return;
+
                 await fetch(`${API_BASE_URL}/api/ai/feedback`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({
                         feedback: isHelpful ? 'positive' : 'negative',
@@ -543,60 +587,39 @@
             }
         }
 
-        // Insert suggestion into email
-        function insertSuggestion() {
-            const suggestion = document.getElementById('suggestionText').textContent;
-            
-            if (!isOfficeReady || typeof Office === 'undefined') {
-                // Fallback: copy to clipboard
-                navigator.clipboard.writeText(suggestion).then(() => {
-                    document.getElementById('status').textContent = 'Suggestion copied to clipboard';
-                }).catch(() => {
-                    document.getElementById('status').textContent = 'Could not copy suggestion';
+        // Initialization
+        function initializeOffice() {
+            if (typeof Office !== 'undefined') {
+                Office.onReady((info) => {
+                    isOfficeReady = true;
+                    if (info.host === Office.HostType.Outlook) {
+                        document.getElementById('status').textContent = 'Connected to Outlook';
+                    } else {
+                        document.getElementById('status').textContent = 'Office loaded (not in Outlook)';
+                    }
+                    initializeAuth();
                 });
-                return;
-            }
-            
-            try {
-                if (Office.context && Office.context.mailbox && Office.context.mailbox.item) {
-                    Office.context.mailbox.item.body.setSelectedDataAsync(
-                        suggestion,
-                        { coercionType: Office.CoercionType.Text },
-                        (result) => {
-                            if (result.status === Office.AsyncResultStatus.Succeeded) {
-                                document.getElementById('status').textContent = 'Suggestion inserted into email';
-                            } else {
-                                document.getElementById('status').textContent = 'Could not insert suggestion';
-                                // Fallback to clipboard
-                                navigator.clipboard.writeText(suggestion);
-                            }
-                        }
-                    );
-                } else {
-                    // Fallback to clipboard
-                    navigator.clipboard.writeText(suggestion).then(() => {
-                        document.getElementById('status').textContent = 'Suggestion copied to clipboard';
-                    });
-                }
-            } catch (error) {
-                console.error('Error inserting suggestion:', error);
-                navigator.clipboard.writeText(suggestion).then(() => {
-                    document.getElementById('status').textContent = 'Suggestion copied to clipboard';
-                });
+            } else {
+                document.getElementById('status').textContent = 'Running in standalone mode';
+                initializeAuth();
             }
         }
 
-        // Add insert button to suggestion result
-        document.addEventListener('DOMContentLoaded', () => {
-            const feedbackSection = document.querySelector('.feedback-section');
-            if (feedbackSection) {
-                const insertBtn = document.createElement('button');
-                insertBtn.className = 'feedback-btn';
-                insertBtn.innerHTML = '<i class="fas fa-plus"></i> Insert';
-                insertBtn.onclick = insertSuggestion;
-                feedbackSection.appendChild(insertBtn);
+        async function initializeAuth() {
+            try {
+                await getAuthToken();
+                document.getElementById('status').textContent = 'Ready to assist with your email writing';
+            } catch (error) {
+                document.getElementById('status').textContent = 'Authentication failed - some features may not work';
             }
-        });
+        }
+
+        // Start initialization
+        if (typeof Office !== 'undefined') {
+            initializeOffice();
+        } else {
+            setTimeout(initializeOffice, 1000);
+        }
     </script>
 </body>
 </html>
