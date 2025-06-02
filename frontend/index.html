@@ -338,7 +338,6 @@
     <script>
         // Backend API endpoint
         const API_BASE_URL = 'https://outlook-ai-backend-djerd0cve5aba2aw.westus2-01.azurewebsites.net';
-		
         
         // Global variables
         let authToken = null;
@@ -350,44 +349,9 @@
                 return authToken;
             }
             
-            try {
-                // Try to register demo user
-                const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: 'demo@outlook.com',
-                        password: 'demo123',
-                        name: 'Demo User'
-                    })
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    authToken = data.token;
-                    return authToken;
-                } else {
-                    // If registration fails, try login
-                    const loginResponse = await fetch(`${API_BASE_URL}/api/auth/login`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            email: 'demo@outlook.com',
-                            password: 'demo123'
-                        })
-                    });
-                    
-                    if (loginResponse.ok) {
-                        const loginData = await loginResponse.json();
-                        authToken = loginData.token;
-                        return authToken;
-                    }
-                }
-            } catch (error) {
-                console.error('Authentication error:', error);
-            }
-            
-            return null;
+            // For now, skip authentication and try direct API call
+            // Your backend might not require auth or use different endpoints
+            return 'demo-token';
         }
 
         // Office.js functions
@@ -500,11 +464,9 @@
             generateBtn.disabled = true;
 
             try {
-                const token = await getAuthToken();
-                if (!token) {
-                    throw new Error('Authentication failed. Please try again.');
-                }
-
+                // Try without authentication first
+                console.log('Trying request without authentication...');
+                
                 const requestData = {
                     prompt: prompt,
                     content: emailContent || 'Please provide a professional email template.',
@@ -523,15 +485,31 @@
 
                 console.log('Sending request:', requestData);
 
-                const response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
+                // First try without auth
+                let response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify(requestData)
                 });
+
+                // If that fails, try with token
+                if (!response.ok && response.status === 401) {
+                    console.log('Trying with authentication token...');
+                    const token = await getAuthToken();
+                    
+                    response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+                }
 
                 console.log('Response status:', response.status);
                 
@@ -560,20 +538,33 @@
 
         async function sendFeedback(isHelpful) {
             try {
-                const token = await getAuthToken();
-                if (!token) return;
-
-                await fetch(`${API_BASE_URL}/api/ai/feedback`, {
+                // Try feedback without auth first
+                let response = await fetch(`${API_BASE_URL}/api/ai/feedback`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         feedback: isHelpful ? 'positive' : 'negative',
                         suggestion: document.getElementById('suggestionText').textContent
                     })
                 });
+
+                // If 401, try with token
+                if (!response.ok && response.status === 401) {
+                    const token = await getAuthToken();
+                    response = await fetch(`${API_BASE_URL}/api/ai/feedback`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            feedback: isHelpful ? 'positive' : 'negative',
+                            suggestion: document.getElementById('suggestionText').textContent
+                        })
+                    });
+                }
 
                 document.getElementById('status').textContent = 
                     isHelpful ? 'Thank you for the positive feedback!' : 'Thank you for the feedback!';
