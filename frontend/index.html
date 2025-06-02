@@ -334,7 +334,8 @@
 
     <script>
         // Backend API endpoint - update with your Azure deployment URL
-        const API_BASE_URL = 'https://outlook-ai-backend-djerd0cve5aba2aw.westus2-01.azurewebsites.net';
+        //const API_BASE_URL = 'https://outlook-ai-backend.azurewebsites.net';
+		const API_BASE_URL = 'https://outlook-ai-backend-djerd0cve5aba2aw.westus2-01.azurewebsites.net';
         
         // Office.js initialization - with fallback
         let isOfficeReady = false;
@@ -436,37 +437,54 @@
             generateBtn.disabled = true;
 
             try {
+                const requestData = {
+                    prompt: prompt,
+                    emailContent: emailContent || '',
+                    context: {
+                        recipientCount: 1,
+                        emailType: 'general',
+                        subject: '',
+                        threadHistory: []
+                    },
+                    userId: 'demo-user', // For demo purposes
+                    preferences: {
+                        tone: 'professional',
+                        length: 'medium'
+                    }
+                };
+
+                console.log('Sending request:', requestData);
+
                 const response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
-                    body: JSON.stringify({
-                        prompt: prompt,
-                        emailContent: emailContent,
-                        context: {
-                            recipientCount: 1,
-                            emailType: 'general'
-                        }
-                    })
+                    body: JSON.stringify(requestData)
                 });
 
+                console.log('Response status:', response.status);
+                
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorText = await response.text();
+                    console.error('Server error response:', errorText);
+                    throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
                 }
 
                 const data = await response.json();
+                console.log('Success response:', data);
                 
                 // Show result
                 loadingDiv.style.display = 'none';
                 suggestionResult.style.display = 'block';
-                suggestionText.textContent = data.suggestion;
+                suggestionText.textContent = data.suggestion || data.message || 'AI suggestion generated successfully';
 
             } catch (error) {
                 console.error('Error generating suggestion:', error);
                 loadingDiv.style.display = 'none';
                 suggestionResult.style.display = 'block';
-                suggestionText.textContent = 'Sorry, I could not generate a suggestion right now. Please try again later.';
+                suggestionText.textContent = `Error: ${error.message}. Please check the console for details.`;
             } finally {
                 generateBtn.disabled = false;
             }
