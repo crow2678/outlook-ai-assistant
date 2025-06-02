@@ -555,9 +555,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                        'X-User-ID': 'demo-user', // Sometimes backends need explicit user ID
-                        'X-Requested-With': 'XMLHttpRequest' // Some backends require this
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify(requestData)
                 });
@@ -589,33 +587,20 @@
 
         async function sendFeedback(isHelpful) {
             try {
-                // Try feedback without auth first
-                let response = await fetch(`${API_BASE_URL}/api/ai/feedback`, {
+                const token = await getAuthToken();
+                if (!token) return;
+
+                const response = await fetch(`${API_BASE_URL}/api/ai/feedback`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({
                         feedback: isHelpful ? 'positive' : 'negative',
                         suggestion: document.getElementById('suggestionText').textContent
                     })
                 });
-
-                // If 401, try with token
-                if (!response.ok && response.status === 401) {
-                    const token = await getAuthToken();
-                    response = await fetch(`${API_BASE_URL}/api/ai/feedback`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            feedback: isHelpful ? 'positive' : 'negative',
-                            suggestion: document.getElementById('suggestionText').textContent
-                        })
-                    });
-                }
 
                 document.getElementById('status').textContent = 
                     isHelpful ? 'Thank you for the positive feedback!' : 'Thank you for the feedback!';
