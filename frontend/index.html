@@ -334,7 +334,7 @@
 
     <script>
         // Backend API endpoint - update with your Azure deployment URL
-        //const API_BASE_URL = 'https://outlook-ai-backend.azurewebsites.net';
+       // const API_BASE_URL = 'https://outlook-ai-backend.azurewebsites.net';
 		const API_BASE_URL = 'https://outlook-ai-backend-djerd0cve5aba2aw.westus2-01.azurewebsites.net';
         
         // Office.js initialization - with fallback
@@ -384,7 +384,13 @@
             const emailContext = document.getElementById('emailContext').value;
             
             if (!customPrompt.trim()) {
-                alert('Please enter a custom instruction');
+                // Replace alert with custom notification
+                document.getElementById('status').textContent = 'Please enter a custom instruction';
+                document.getElementById('status').style.color = 'red';
+                setTimeout(() => {
+                    document.getElementById('status').textContent = 'Ready to assist with your email writing';
+                    document.getElementById('status').style.color = '';
+                }, 3000);
                 return;
             }
 
@@ -439,14 +445,14 @@
             try {
                 const requestData = {
                     prompt: prompt,
-                    emailContent: emailContent || '',
+                    content: emailContent || 'Please provide a professional email template.',
                     context: {
                         recipientCount: 1,
                         emailType: 'general',
                         subject: '',
                         threadHistory: []
                     },
-                    userId: 'demo-user', // For demo purposes
+                    userId: 'demo-user',
                     preferences: {
                         tone: 'professional',
                         length: 'medium'
