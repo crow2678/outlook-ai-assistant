@@ -673,17 +673,33 @@
             }
         }
 
-        async function initializeAuth() {
+        async function testAzureOpenAI() {
             try {
+                console.log('Testing Azure OpenAI connection...');
                 const token = await getAuthToken();
-                if (token) {
-                    document.getElementById('status').textContent = 'Authentication successful - Ready to assist';
+                
+                const response = await fetch(`${API_BASE_URL}/api/test/azure-openai`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                const result = await response.text();
+                console.log('Azure OpenAI Test Result:', response.status, result);
+                
+                if (response.ok) {
+                    document.getElementById('status').textContent = 'Azure OpenAI connection working!';
                 } else {
-                    document.getElementById('status').textContent = 'Authentication failed - Please check console for details';
+                    document.getElementById('status').textContent = 'Azure OpenAI connection failed - check console';
                 }
+                
+                return response.ok;
             } catch (error) {
-                console.error('Auth initialization error:', error);
-                document.getElementById('status').textContent = 'Authentication error - Check console for details';
+                console.error('Azure OpenAI test error:', error);
+                document.getElementById('status').textContent = 'Azure OpenAI test failed - check console';
+                return false;
             }
         }
 
