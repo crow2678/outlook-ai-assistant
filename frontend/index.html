@@ -1339,81 +1339,94 @@
 
 // In your index.html, find the generateSuggestion function and update the endpoint URL
 
-	async function generateSuggestion(prompt, emailContent) {
-		const resultSection = document.getElementById('resultSection');
-		const loadingDiv = document.getElementById('loadingDiv');
-		const suggestionResult = document.getElementById('suggestionResult');
-		const suggestionText = document.getElementById('suggestionText');
-		const generateBtn = document.getElementById('generateBtn');
+async function generateSuggestion(prompt, emailContent) {
+    const resultSection = document.getElementById('resultSection');
+    const loadingDiv = document.getElementById('loadingDiv');
+    const suggestionResult = document.getElementById('suggestionResult');
+    const suggestionText = document.getElementById('suggestionText');
+    const generateBtn = document.getElementById('generateBtn');
 
-		// Show loading
-		resultSection.classList.add('show');
-		loadingDiv.style.display = 'flex';
-		suggestionResult.style.display = 'none';
-		generateBtn.disabled = true;
+    // Show loading
+    resultSection.classList.add('show');
+    loadingDiv.style.display = 'flex';
+    suggestionResult.style.display = 'none';
+    generateBtn.disabled = true;
 
-		try {
-			console.log('Getting authentication token...');
-			const token = await getAuthToken();
-			
-			if (!token) {
-				throw new Error('Could not get valid authentication token. Please check console for details.');
-			}
+    try {
+        console.log('Getting authentication token...');
+        const token = await getAuthToken();
+        
+        if (!token) {
+            throw new Error('Could not get valid authentication token.');
+        }
 
-			const requestData = {
-				prompt: prompt,
-				content: emailContent || 'Please provide a professional email template.',
-				context: {
-					recipientCount: 1,
-					emailType: 'general',
-					subject: '',
-					threadHistory: []
-				},
-				userId: 'admin', // Match the JWT token's id field
-				preferences: {
-					tone: 'professional',
-					length: 'medium'
-				}
-			};
+        // FIXED: Don't send userId in body - get it from JWT token on backend
+        const requestData = {
+            prompt: prompt,
+            content: emailContent || 'Please provide a professional email template.',
+            context: {
+                recipientCount: 1,
+                emailType: 'general',
+                subject: '',
+                threadHistory: []
+            },
+            triggerType: getTypeFromPrompt(prompt),
+            preferences: {
+                tone: 'professional',
+                length: 'medium'
+            }
+            // ❌ REMOVED: userId: 'admin' - not needed!
+        };
 
-			console.log('Sending authenticated request with token:', token?.substring(0, 20) + '...');
-			console.log('Request data:', requestData);
+        console.log('Sending authenticated request...');
+        console.log('Request data:', requestData);
 
-			// FIXED: Use the correct endpoint URL
-			const response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'Accept': 'application/json',
-					'Authorization': `Bearer ${token}`
-				},
-				body: JSON.stringify(requestData)
-			});
+        const response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${token}` // Authentication is here!
+            },
+            body: JSON.stringify(requestData)
+        });
 
-			console.log('Response status:', response.status);
-			
-			if (!response.ok) {
-				const errorText = await response.text();
-				console.error('Server error response:', errorText);
-				throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
-			}
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Server error response:', errorText);
+            throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+        }
 
-			const data = await response.json();
-			console.log('Success response:', data);
-			
-			loadingDiv.style.display = 'none';
-			suggestionResult.style.display = 'block';
-			suggestionText.textContent = data.suggestion || data.message || 'AI suggestion generated successfully';
+        const data = await response.json();
+        console.log('Success response:', data);
+        
+        loadingDiv.style.display = 'none';
+        suggestionResult.style.display = 'block';
+        suggestionText.textContent = data.suggestion || data.message || 'AI suggestion generated successfully';
 
-		} catch (error) {
-			console.error('Error generating suggestion:', error);
-			loadingDiv.style.display = 'none';
-			suggestionResult.style.display = 'block';
-			suggestionText.textContent = `Error: ${error.message}. Please check the console for details.`;
-		} finally {
-			generateBtn.disabled = false;
-		}
-	}
+    } catch (error) {
+        console.error('Error generating suggestion:', error);
+        loadingDiv.style.display = 'none';
+        suggestionResult.style.display = 'block';
+        suggestionText.textContent = `Error: ${error.message}`;
+    } finally {
+        generateBtn.disabled = false;
+    }
+}
+
+// Helper function to determine trigger type from prompt
+function getTypeFromPrompt(prompt) {
+    const lowerPrompt = prompt.toLowerCase();
+    if (lowerPrompt.includes('formal')) return 'formal';
+    if (lowerPrompt.includes('casual')) return 'casual';
+    if (lowerPrompt.includes('shorter') || lowerPrompt.includes('concise')) return 'shorter';
+    if (lowerPrompt.includes('improve')) return 'improve';
+    return 'improve';
+}
+
+
 
 // Also update any other API calls that might be using wrong endpoints:
 

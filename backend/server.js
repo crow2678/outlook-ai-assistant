@@ -1796,59 +1796,54 @@ console.log('🗄️  Part 4: Onboarding and user management routes configured')
 // AI Generation APIs using Azure OpenAI
 const setupAIRoutes = () => {
   // Generate AI suggestion using Azure OpenAI
-  app.post('/api/ai/generate', [
-    body('prompt').isString().isLength({ min: 10, max: 5000 }).withMessage('Prompt must be 10-5000 characters'),
-    body('content').isString().isLength({ min: 1, max: 10000 }).withMessage('Content must be 1-10000 characters'),
-    body('context').optional().isObject(),
-    body('userId').notEmpty().escape(),
-    body('triggerType').optional().isIn(['improve', 'formal', 'casual', 'shorter', 'longer'])
-  ], validateRequest, authenticateToken, async (req, res) => {
-    try {
-      const { prompt, content, context, userId, triggerType = 'improve' } = req.body;
-      
-      // Verify user access
-      if (req.user.id !== userId && !req.user.isAdmin) {
-        return res.status(403).json({
-          error: 'Access Denied',
-          requestId: req.requestId
-        });
-      }
-      
-      if (!openaiClient) {
-        return res.status(503).json({
-          error: 'AI Service Unavailable',
-          message: 'Azure OpenAI service is not configured',
-          requestId: req.requestId
-        });
-      }
-      
-      // Generate suggestion ID for tracking
-      const suggestionId = generateSuggestionId();
-      
-      console.log(`🤖 Generating AI suggestion for user: ${userId}, trigger: ${triggerType}`);
-      
-      // Call Azure OpenAI
-      const suggestion = await generateWithAzureOpenAI(prompt, content, context, triggerType);
-      
-      // Log the interaction for learning
-      await logAIInteraction(userId, suggestionId, {
-        prompt,
-        content,
-        context,
-        suggestion,
-        triggerType,
-        model: process.env.AZURE_OPENAI_DEPLOYMENT_NAME
-      });
-      
-      res.json({
-        suggestionId,
-        suggestion: suggestion.text,
-        confidence: suggestion.confidence || 0.8,
-        model: process.env.AZURE_OPENAI_DEPLOYMENT_NAME,
-        reasoning: suggestion.reasoning,
-        alternatives: suggestion.alternatives || [],
-        usage: suggestion.usage
-      });
+	  app.post('/api/ai/generate', [
+		body('prompt').isString().isLength({ min: 10, max: 5000 }),
+		body('content').isString().isLength({ min: 1, max: 10000 }),
+		body('context').optional().isObject(),
+		body('triggerType').optional().isIn(['improve', 'formal', 'casual', 'shorter', 'longer'])
+		// ❌ REMOVED: body('userId').notEmpty() validation
+	  ], validateRequest, authenticateToken, async (req, res) => {
+		try {
+		  const { prompt, content, context, triggerType = 'improve' } = req.body;
+		  
+		  // ✅ Get userId from authenticated token (req.user)
+		  const userId = req.user.id;
+		  
+		  console.log(`🤖 Generating AI suggestion for authenticated user: ${userId}, trigger: ${triggerType}`);
+		  
+		  if (!openaiClient) {
+			return res.status(503).json({
+			  error: 'AI Service Unavailable',
+			  message: 'Azure OpenAI service is not configured',
+			  requestId: req.requestId
+			});
+		  }
+		  
+		  // Generate suggestion ID for tracking
+		  const suggestionId = generateSuggestionId();
+		  
+		  // Call Azure OpenAI
+		  const suggestion = await generateWithAzureOpenAI(prompt, content, context, triggerType);
+		  
+		  // Log the interaction for learning
+		  await logAIInteraction(userId, suggestionId, {
+			prompt,
+			content,
+			context,
+			suggestion,
+			triggerType,
+			model: process.env.AZURE_OPENAI_DEPLOYMENT_NAME
+		  });
+		  
+		  res.json({
+			suggestionId,
+			suggestion: suggestion.text,
+			confidence: suggestion.confidence || 0.8,
+			model: process.env.AZURE_OPENAI_DEPLOYMENT_NAME,
+			reasoning: suggestion.reasoning,
+			alternatives: suggestion.alternatives || [],
+			usage: suggestion.usage
+		  });
       
     } catch (error) {
       console.error('AI generation error:', error);
