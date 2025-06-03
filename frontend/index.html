@@ -387,15 +387,27 @@
                     return authToken;
                 }
                 
-                // If both fail, try auth endpoints
-                const authLoginResponse = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                // If both fail, try auth endpoints with admin user
+                let authLoginResponse = await fetch(`${API_BASE_URL}/api/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        email: 'demo@outlook.com',
-                        password: 'demo123456'
+                        email: 'admin@outlook.com',
+                        password: 'admin123456'
                     })
                 });
+                
+                if (!authLoginResponse.ok) {
+                    // Try regular demo user if admin fails
+                    authLoginResponse = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: 'demo@outlook.com',
+                            password: 'demo123456'
+                        })
+                    });
+                }
                 
                 if (authLoginResponse.ok) {
                     const authData = await authLoginResponse.json();
@@ -550,15 +562,42 @@
                 console.log('Sending authenticated request with token:', token?.substring(0, 20) + '...');
                 console.log('Request data:', requestData);
 
-                const response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(requestData)
-                });
+                // Try multiple possible endpoints
+                let response;
+                const endpoints = [
+                    `${API_BASE_URL}/api/ai/generate`,
+                    `${API_BASE_URL}/api/ai/suggestion`,
+                    `${API_BASE_URL}/generate`,
+                    `${API_BASE_URL}/api/generate`
+                ];
+
+                for (const endpoint of endpoints) {
+                    try {
+                        console.log(`Trying endpoint: ${endpoint}`);
+                        response = await fetch(endpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify(requestData)
+                        });
+
+                        if (response.ok) {
+                            console.log(`Success with endpoint: ${endpoint}`);
+                            break;
+                        } else {
+                            console.log(`Failed with ${endpoint}: ${response.status}`);
+                        }
+                    } catch (error) {
+                        console.log(`Error with ${endpoint}:`, error.message);
+                    }
+                }
+
+                if (!response) {
+                    throw new Error('All endpoints failed');
+                }
 
                 console.log('Response status:', response.status);
                 
