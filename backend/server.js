@@ -355,7 +355,166 @@ const validateRequest = (req, res, next) => {
   
   next();
 };
+/*******************************************/
+// Add these endpoints to your backend API
 
+// User Profile & Onboarding Status
+app.get('/api/users/profile', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        
+        // Check if user profile exists and onboarding is complete
+        const userProfile = await getUserProfile(userId);
+        
+        res.json({
+            onboardingComplete: userProfile?.onboardingComplete || false,
+            writingStyle: userProfile?.writingStyle || null,
+            preferences: userProfile?.preferences || {},
+            emailsAnalyzed: userProfile?.emailsAnalyzed || 0
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to get user profile' });
+    }
+});
+
+// Email Style Analysis
+app.post('/api/users/analyze-style', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { emailSamples } = req.body;
+        
+        if (!emailSamples || emailSamples.length === 0) {
+            return res.status(400).json({ error: 'No email samples provided' });
+        }
+        
+        // Analyze writing style using OpenAI
+        const styleAnalysis = await analyzeWritingStyle(emailSamples);
+        
+        // Save user's writing style profile
+        await saveUserWritingStyle(userId, {
+            toneProfile: styleAnalysis.tone,
+            vocabularyLevel: styleAnalysis.vocabulary,
+            structurePreferences: styleAnalysis.structure,
+            relationshipAdaptation: styleAnalysis.relationships,
+            commonPhrases: styleAnalysis.phrases,
+            emailsAnalyzed: emailSamples.length,
+            analyzedAt: new Date()
+        });
+        
+        res.json({
+            success: true,
+            analysis: styleAnalysis,
+            emailsProcessed: emailSamples.length
+        });
+        
+    } catch (error) {
+        console.error('Style analysis error:', error);
+        res.status(500).json({ error: 'Failed to analyze writing style' });
+    }
+});
+
+// Complete Onboarding
+app.post('/api/users/complete-onboarding', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        
+        await updateUserProfile(userId, {
+            onboardingComplete: true,
+            onboardingCompletedAt: new Date()
+        });
+        
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to complete onboarding' });
+    }
+});
+
+// Style Preference Update
+app.post('/api/users/style-preference', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { preferredStyle } = req.body;
+        
+        await updateUserProfile(userId, {
+            preferredStyle: preferredStyle
+        });
+        
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to save style preference' });
+    }
+});
+
+// Helper Functions
+async function analyzeWritingStyle(emailSamples) {
+    // Use OpenAI to analyze writing patterns
+    const analysisPrompt = `
+    Analyze the writing style from these email samples and provide a JSON response with:
+    - tone: formal/casual/balanced scale 1-10
+    - vocabulary: simple/moderate/advanced
+    - structure: preferred email length and organization
+    - relationships: how tone varies with different recipients
+    - phrases: commonly used expressions
+    
+    Email samples:
+    ${emailSamples.map(email => `To: ${email.to}, Subject: ${email.subject}, Body: ${email.body}`).join('\n\n')}
+    `;
+    
+    try {
+        const response = await openai.chat.completions.create({
+            model: "gpt-4",
+            messages: [
+                {
+                    role: "system",
+                    content: "You are an expert writing style analyzer. Provide detailed analysis in JSON format."
+                },
+                {
+                    role: "user",
+                    content: analysisPrompt
+                }
+            ],
+            temperature: 0.3
+        });
+        
+        return JSON.parse(response.choices[0].message.content);
+    } catch (error) {
+        console.error('OpenAI analysis error:', error);
+        // Return default analysis if API fails
+        return {
+            tone: 6,
+            vocabulary: 'moderate',
+            structure: 'medium',
+            relationships: 'adaptive',
+            phrases: []
+        };
+    }
+}
+
+async function getUserProfile(userId) {
+    // Implement database query for user profile
+    // This depends on your database setup
+    return database.query('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
+}
+
+async function saveUserWritingStyle(userId, styleData) {
+    // Save writing style analysis to database
+    return database.query(
+        'INSERT INTO user_writing_styles (user_id, style_data, created_at) VALUES (?, ?, ?)',
+        [userId, JSON.stringify(styleData), new Date()]
+    );
+}
+
+async function updateUserProfile(userId, updates) {
+    // Update user profile in database
+    const setClause = Object.keys(updates).map(key => `${key} = ?`).join(', ');
+    const values = [...Object.values(updates), userId];
+    
+    return database.query(
+        `UPDATE user_profiles SET ${setClause} WHERE user_id = ?`,
+        values
+    );
+}
+/********************************************/
 // Global error handler
 const errorHandler = (err, req, res, next) => {
   console.error(`❌ Error in ${req.method} ${req.path}:`, err);
