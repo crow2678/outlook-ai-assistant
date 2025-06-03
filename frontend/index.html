@@ -387,34 +387,36 @@
                     return authToken;
                 }
                 
-                // If both fail, try auth endpoints with admin user
-                let authLoginResponse = await fetch(`${API_BASE_URL}/api/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: 'admin@outlook.com',
-                        password: 'admin123456'
-                    })
-                });
-                
-                if (!authLoginResponse.ok) {
-                    // Try regular demo user if admin fails
-                    authLoginResponse = await fetch(`${API_BASE_URL}/api/auth/login`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            email: 'demo@outlook.com',
-                            password: 'demo123456'
-                        })
-                    });
-                }
-                
-                if (authLoginResponse.ok) {
-                    const authData = await authLoginResponse.json();
-                    console.log('Auth response:', authData); // Debug the response
-                    authToken = authData.token || authData.accessToken || authData.jwt;
-                    console.log('Auth login successful, token:', authToken);
-                    return authToken;
+                // If both fail, try auth endpoints with multiple admin credentials
+                const adminCredentials = [
+                    { email: 'admin@outlook.com', password: 'admin123456' },
+                    { email: 'admin@admin.com', password: 'admin123' },
+                    { email: 'test@admin.com', password: 'admin123' },
+                    { email: 'admin@example.com', password: 'password123' },
+                    { email: 'demo@outlook.com', password: 'demo123456' } // Keep demo as fallback
+                ];
+
+                for (const creds of adminCredentials) {
+                    try {
+                        console.log(`Trying login with: ${creds.email}`);
+                        const authLoginResponse = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(creds)
+                        });
+                        
+                        if (authLoginResponse.ok) {
+                            const authData = await authLoginResponse.json();
+                            console.log(`Success with ${creds.email}:`, authData);
+                            authToken = authData.token || authData.accessToken || authData.jwt;
+                            console.log('Auth login successful, token:', authToken);
+                            return authToken;
+                        } else {
+                            console.log(`Failed with ${creds.email}: ${authLoginResponse.status}`);
+                        }
+                    } catch (error) {
+                        console.log(`Error with ${creds.email}:`, error.message);
+                    }
                 }
                 
                 console.error('All authentication methods failed');
@@ -552,7 +554,7 @@
                         subject: '',
                         threadHistory: []
                     },
-                    userId: 'demo-user',
+                    userId: 'demo', // Match the JWT token's id field
                     preferences: {
                         tone: 'professional',
                         length: 'medium'
