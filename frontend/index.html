@@ -1337,107 +1337,90 @@
             await generateSuggestion(customPrompt, emailContent);
         }
 
-        async function generateSuggestion(prompt, emailContent) {
-            const resultSection = document.getElementById('resultSection');
-            const loadingDiv = document.getElementById('loadingDiv');
-            const suggestionResult = document.getElementById('suggestionResult');
-            const suggestionText = document.getElementById('suggestionText');
-            const generateBtn = document.getElementById('generateBtn');
+// In your index.html, find the generateSuggestion function and update the endpoint URL
 
-            // Show loading
-            resultSection.classList.add('show');
-            loadingDiv.style.display = 'flex';
-            suggestionResult.style.display = 'none';
-            generateBtn.disabled = true;
+	async function generateSuggestion(prompt, emailContent) {
+		const resultSection = document.getElementById('resultSection');
+		const loadingDiv = document.getElementById('loadingDiv');
+		const suggestionResult = document.getElementById('suggestionResult');
+		const suggestionText = document.getElementById('suggestionText');
+		const generateBtn = document.getElementById('generateBtn');
 
-            try {
-                console.log('Getting authentication token...');
-                const token = await getAuthToken();
-                
-                if (!token) {
-                    throw new Error('Could not get valid authentication token. Please check console for details.');
-                }
+		// Show loading
+		resultSection.classList.add('show');
+		loadingDiv.style.display = 'flex';
+		suggestionResult.style.display = 'none';
+		generateBtn.disabled = true;
 
-                const requestData = {
-                    prompt: prompt,
-                    content: emailContent || 'Please provide a professional email template.',
-                    context: {
-                        recipientCount: 1,
-                        emailType: 'general',
-                        subject: '',
-                        threadHistory: []
-                    },
-                    userId: 'admin', // Match the JWT token's id field
-                    preferences: {
-                        tone: 'professional',
-                        length: 'medium'
-                    }
-                };
+		try {
+			console.log('Getting authentication token...');
+			const token = await getAuthToken();
+			
+			if (!token) {
+				throw new Error('Could not get valid authentication token. Please check console for details.');
+			}
 
-                console.log('Sending authenticated request with token:', token?.substring(0, 20) + '...');
-                console.log('Request data:', requestData);
+			const requestData = {
+				prompt: prompt,
+				content: emailContent || 'Please provide a professional email template.',
+				context: {
+					recipientCount: 1,
+					emailType: 'general',
+					subject: '',
+					threadHistory: []
+				},
+				userId: 'admin', // Match the JWT token's id field
+				preferences: {
+					tone: 'professional',
+					length: 'medium'
+				}
+			};
 
-                // Try multiple possible endpoints
-                let response;
-                const endpoints = [
-                    `${API_BASE_URL}/api/ai/generate`,
-                    `${API_BASE_URL}/api/ai/suggestion`,
-                    `${API_BASE_URL}/generate`,
-                    `${API_BASE_URL}/api/generate`
-                ];
+			console.log('Sending authenticated request with token:', token?.substring(0, 20) + '...');
+			console.log('Request data:', requestData);
 
-                for (const endpoint of endpoints) {
-                    try {
-                        console.log(`Trying endpoint: ${endpoint}`);
-                        response = await fetch(endpoint, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'Authorization': `Bearer ${token}`
-                            },
-                            body: JSON.stringify(requestData)
-                        });
+			// FIXED: Use the correct endpoint URL
+			const response = await fetch(`${API_BASE_URL}/api/ai/generate`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Accept': 'application/json',
+					'Authorization': `Bearer ${token}`
+				},
+				body: JSON.stringify(requestData)
+			});
 
-                        if (response.ok) {
-                            console.log(`Success with endpoint: ${endpoint}`);
-                            break;
-                        } else {
-                            console.log(`Failed with ${endpoint}: ${response.status}`);
-                        }
-                    } catch (error) {
-                        console.log(`Error with ${endpoint}:`, error.message);
-                    }
-                }
+			console.log('Response status:', response.status);
+			
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('Server error response:', errorText);
+				throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+			}
 
-                if (!response) {
-                    throw new Error('All endpoints failed');
-                }
+			const data = await response.json();
+			console.log('Success response:', data);
+			
+			loadingDiv.style.display = 'none';
+			suggestionResult.style.display = 'block';
+			suggestionText.textContent = data.suggestion || data.message || 'AI suggestion generated successfully';
 
-                console.log('Response status:', response.status);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Server error response:', errorText);
-                    throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
-                }
+		} catch (error) {
+			console.error('Error generating suggestion:', error);
+			loadingDiv.style.display = 'none';
+			suggestionResult.style.display = 'block';
+			suggestionText.textContent = `Error: ${error.message}. Please check the console for details.`;
+		} finally {
+			generateBtn.disabled = false;
+		}
+	}
 
-                const data = await response.json();
-                console.log('Success response:', data);
-                
-                loadingDiv.style.display = 'none';
-                suggestionResult.style.display = 'block';
-                suggestionText.textContent = data.suggestion || data.message || 'AI suggestion generated successfully';
+// Also update any other API calls that might be using wrong endpoints:
 
-            } catch (error) {
-                console.error('Error generating suggestion:', error);
-                loadingDiv.style.display = 'none';
-                suggestionResult.style.display = 'block';
-                suggestionText.textContent = `Error: ${error.message}. Please check the console for details.`;
-            } finally {
-                generateBtn.disabled = false;
-            }
-        }
+// If you have any calls to these endpoints, update them:
+// OLD: /api/generate -> NEW: /api/ai/generate
+// OLD: /api/feedback -> NEW: /api/ai/feedback
+// OLD: /api/stats -> NEW: /api/ai/stats
 
         async function sendFeedback(isHelpful) {
             try {
