@@ -1328,16 +1328,16 @@
 			// SALES-FOCUSED PROMPTS
 			const salesPrompts = {
 				// Button 1: First Follow-up (Blue button)
-				followup1: `Analyze this email and write a professional C-executive level first follow-up email. Make it compelling, value-focused, and appropriate for senior decision-makers. Reference the original context and add strategic value proposition: "${emailContext}"`,
+				followup1: `Analyze this email and write a short, sharp first follow-up email for C-level executives. It must reference the original context, offer strategic value, and prompt a next step — all in under 100 words. Optimize for busy senior decision-makers: "${emailContext}"`,
 				
 				// Button 2: Second Follow-up (Purple button)  
-				followup2: `Create a smooth, professional C-executive level second follow-up email. Make it persistent but respectful, with a different angle and renewed urgency. Assume the first follow-up didn't get a response: "${emailContext}"`,
+				followup2: `Write a concise second follow-up email for C-level executives, assuming no reply to the first. It should feel professional, respectfully persistent, offer a new angle or value, and prompt action — under 100 words: "${emailContext}"`,
 				
 				// Button 3: Proposal/Pitch Email (Teal button)
-				proposal: `Transform this into a compelling business proposal email for C-level executives. Include clear value proposition, ROI implications, and strategic benefits. Make it executive-ready and decision-focused: "${emailContext}"`,
+				proposal: `Transform this into a crisp, decision-ready business proposal email for C-level executives. Highlight strategic value, ROI impact, and clear next steps — structured so it can be read in under 1 minute: "${emailContext}"`,
 				
 				// Button 4: Closing/Urgency Email (Orange button)
-				closing: `Rewrite this as a professional closing email with appropriate urgency for end-of-quarter. Create FOMO (fear of missing out) while maintaining executive-level professionalism and respect: "${emailContext}"`
+				closing: `Rewrite this as a short, professional closing email with appropriate urgency (e.g. quarter-end). Create respectful FOMO, prompt action, and make it suitable for time-constrained C-level executives — under 100 words: "${emailContext}"`
 			};
 			
 			console.log(`Using sales prompt for ${type}:`, salesPrompts[type]);

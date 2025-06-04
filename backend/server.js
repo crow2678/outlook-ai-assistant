@@ -2036,20 +2036,20 @@ const generateWithAzureOpenAI = async (prompt, content, context, triggerType) =>
       
       // NEW CASES - ADD THESE:
       case 'followup1':
-        systemPrompt = 'You are an expert in professional follow-up communication. Write compelling first follow-up emails that gently remind recipients and add value while maintaining executive-level professionalism.';
-        userPrompt = `Write a professional first follow-up email for this original message. The follow-up should be sent a few days after the original email to gently remind and re-engage. Keep it brief, add value, and maintain executive-level professionalism:\n\nOriginal Email:\n${content}`;
+        systemPrompt = 'You are an expert in executive sales communication. Write sharp, concise first follow-up emails designed for C-level executives with short attention spans. The email should clearly reference prior context, offer value, and prompt an easy next step — all in under 100 words.';
+		userPrompt = `Based on this original message, write a short first follow-up email to re-engage the recipient. Keep it crisp, value-driven, and respectful of executive time:\n\nOriginal Email:\n${content}`;
         break;
       case 'followup2':
-        systemPrompt = 'You are an expert in persistent yet respectful business communication. Write second follow-up emails that are more direct but still professional, assuming the first follow-up received no response.';
-        userPrompt = `Write a professional second follow-up email assuming the first follow-up didn't get a response. Make it more direct but still respectful, with a different angle and appropriate urgency:\n\nOriginal Email:\n${content}`;
+		systemPrompt = 'You are an expert in writing second follow-up emails to C-level executives. Craft short, respectful, and slightly more direct messages that reference the previous emails and offer a new angle or clear next step — under 100 words, easy to read.';
+		userPrompt = `Assuming no reply to the first follow-up, write a concise second follow-up email for this original message. The tone should be professional, with subtle urgency and a new reason to engage:\n\nOriginal Email:\n${content}`;
         break;
       case 'proposal':
-        systemPrompt = 'You are an expert in executive-level business proposals. Transform emails into compelling business proposals with clear value propositions, ROI implications, and strategic benefits suitable for C-level decision makers.';
-        userPrompt = `Transform this email into a compelling business proposal for C-level executives. Include clear value proposition, ROI implications, strategic benefits, and next steps:\n\nOriginal Content:\n${content}`;
+        systemPrompt = 'You are an expert in crafting C-level business proposals. Transform emails into sharp executive summaries with clear value propositions, ROI, strategic impact, and a recommended next step — all structured for quick executive review.';
+		userPrompt = `Transform this content into a concise executive business proposal. Emphasize value, ROI, and strategic impact. Structure it so a C-level reader can scan it in under 1 minute:\n\nOriginal Content:\n${content}`;
         break;
       case 'closing':
-        systemPrompt = 'You are an expert in urgency-driven business communication. Write professional closing emails that create appropriate urgency and FOMO while maintaining executive-level professionalism and respect.';
-        userPrompt = `Write a professional closing email with appropriate urgency (end-of-quarter/deadline approach). Create FOMO while maintaining executive-level professionalism:\n\nOriginal Email:\n${content}`;
+		systemPrompt = 'You are an expert in closing high-value executive sales. Write short, urgency-driven closing emails that create respectful FOMO and prompt quick action, optimized for C-level readers with limited time.';
+		userPrompt = `Based on this original email, write a crisp, professional closing email that creates urgency (e.g. quarter-end, limited opportunity) and prompts next steps. Keep it under 100 words:\n\nOriginal Email:\n${content}`;
         break;
         
       default:
