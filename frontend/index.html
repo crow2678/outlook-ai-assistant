@@ -1442,13 +1442,30 @@ async function generateSuggestion(prompt, emailContent) {
     }
 }
 
-// Helper function to determine trigger type from prompt
+// OPTION 2: Improve the getTypeFromPrompt function
+
 function getTypeFromPrompt(prompt) {
     const lowerPrompt = prompt.toLowerCase();
+    
+    // Check for follow-up patterns first (more specific)
+    if (lowerPrompt.includes('first follow-up') || lowerPrompt.includes('1st follow-up')) return 'followup1';
+    if (lowerPrompt.includes('second follow-up') || lowerPrompt.includes('2nd follow-up')) return 'followup2';
+    if (lowerPrompt.includes('follow-up') || lowerPrompt.includes('followup')) return 'followup1';
+    
+    // Check for other specific patterns
+    if (lowerPrompt.includes('proposal') || lowerPrompt.includes('business proposal')) return 'proposal';
+    if (lowerPrompt.includes('closing') || lowerPrompt.includes('urgency') || lowerPrompt.includes('urgent')) return 'closing';
+    
+    // Check for tone modifications
     if (lowerPrompt.includes('formal')) return 'formal';
     if (lowerPrompt.includes('casual')) return 'casual';
     if (lowerPrompt.includes('shorter') || lowerPrompt.includes('concise')) return 'shorter';
-    if (lowerPrompt.includes('improve')) return 'improve';
+    if (lowerPrompt.includes('longer') || lowerPrompt.includes('expand')) return 'longer';
+    
+    // Check for improve last (so it doesn't override more specific patterns)
+    if (lowerPrompt.includes('improve') || lowerPrompt.includes('better')) return 'improve';
+    
+    // Default fallback
     return 'improve';
 }
 
