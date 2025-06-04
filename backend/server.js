@@ -1800,7 +1800,7 @@ const setupAIRoutes = () => {
 		body('prompt').isString().isLength({ min: 10, max: 5000 }),
 		body('content').isString().isLength({ min: 1, max: 10000 }),
 		body('context').optional().isObject(),
-		body('triggerType').optional().isIn(['improve', 'formal', 'casual', 'shorter', 'longer'])
+		body('triggerType').optional().isIn(['improve', 'formal', 'casual', 'shorter', 'longer','followup1', 'followup2', 'proposal', 'closing'])
 		// ❌ REMOVED: body('userId').notEmpty() validation
 	  ], validateRequest, authenticateToken, async (req, res) => {
 		try {
@@ -2009,7 +2009,6 @@ const setupAIRoutes = () => {
 // Azure OpenAI generation function
 const generateWithAzureOpenAI = async (prompt, content, context, triggerType) => {
   try {
-    // Build comprehensive system prompt based on trigger type and context
     let systemPrompt = '';
     let userPrompt = '';
 
@@ -2034,11 +2033,31 @@ const generateWithAzureOpenAI = async (prompt, content, context, triggerType) =>
         systemPrompt = 'You are an expert in detailed professional communication. Expand emails with appropriate context, explanations, and professional language while maintaining focus.';
         userPrompt = `Please expand this email with more detail and context:\n\n${content}`;
         break;
+      
+      // NEW CASES - ADD THESE:
+      case 'followup1':
+        systemPrompt = 'You are an expert in professional follow-up communication. Write compelling first follow-up emails that gently remind recipients and add value while maintaining executive-level professionalism.';
+        userPrompt = `Write a professional first follow-up email for this original message. The follow-up should be sent a few days after the original email to gently remind and re-engage. Keep it brief, add value, and maintain executive-level professionalism:\n\nOriginal Email:\n${content}`;
+        break;
+      case 'followup2':
+        systemPrompt = 'You are an expert in persistent yet respectful business communication. Write second follow-up emails that are more direct but still professional, assuming the first follow-up received no response.';
+        userPrompt = `Write a professional second follow-up email assuming the first follow-up didn't get a response. Make it more direct but still respectful, with a different angle and appropriate urgency:\n\nOriginal Email:\n${content}`;
+        break;
+      case 'proposal':
+        systemPrompt = 'You are an expert in executive-level business proposals. Transform emails into compelling business proposals with clear value propositions, ROI implications, and strategic benefits suitable for C-level decision makers.';
+        userPrompt = `Transform this email into a compelling business proposal for C-level executives. Include clear value proposition, ROI implications, strategic benefits, and next steps:\n\nOriginal Content:\n${content}`;
+        break;
+      case 'closing':
+        systemPrompt = 'You are an expert in urgency-driven business communication. Write professional closing emails that create appropriate urgency and FOMO while maintaining executive-level professionalism and respect.';
+        userPrompt = `Write a professional closing email with appropriate urgency (end-of-quarter/deadline approach). Create FOMO while maintaining executive-level professionalism:\n\nOriginal Email:\n${content}`;
+        break;
+        
       default:
         systemPrompt = prompt || 'You are a helpful email writing assistant. Improve the given email according to the user\'s request.';
         userPrompt = `${prompt}\n\nEmail to improve:\n${content}`;
     }
 
+    // Rest of the function remains the same...
     const messages = [
       {
         role: 'system',
@@ -2074,24 +2093,6 @@ const generateWithAzureOpenAI = async (prompt, content, context, triggerType) =>
     
   } catch (error) {
     console.error('Azure OpenAI generation error:', error);
-    
-    // Handle Azure OpenAI specific errors
-    if (error.response?.status === 429) {
-      const retryError = new Error('Rate limit exceeded for Azure OpenAI');
-      retryError.status = 429;
-      throw retryError;
-    }
-    if (error.response?.status === 401) {
-      const authError = new Error('Azure OpenAI authentication failed');
-      authError.status = 401;
-      throw authError;
-    }
-    if (error.response?.data?.error?.code === 'content_filter') {
-      const filterError = new Error('Content was filtered');
-      filterError.code = 'content_filter';
-      throw filterError;
-    }
-    
     throw error;
   }
 };
