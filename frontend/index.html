@@ -1478,34 +1478,76 @@ function getTypeFromPrompt(prompt) {
 // OLD: /api/feedback -> NEW: /api/ai/feedback
 // OLD: /api/stats -> NEW: /api/ai/stats
 
-        async function sendFeedback(isHelpful) {
-            try {
-                const token = await getAuthToken();
-                if (!token) return;
+// Replace your sendFeedback function in index.html with this fixed version
 
-                const response = await fetch(`${API_BASE_URL}/api/ai/feedback`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        feedback: isHelpful ? 'positive' : 'negative',
-                        suggestion: document.getElementById('suggestionText').textContent
-                    })
-                });
+	async function sendFeedback(isHelpful) {
+		try {
+			const token = await getAuthToken();
+			if (!token) {
+				console.error('No auth token available');
+				return;
+			}
 
-                document.getElementById('status').textContent = 
-                    isHelpful ? 'Thank you for the positive feedback!' : 'Thank you for the feedback!';
-                
-                setTimeout(() => {
-                    document.getElementById('status').textContent = 'Ready to assist with your email writing';
-                }, 3000);
+			// Get the suggestion text
+			const suggestionText = document.getElementById('suggestionText').textContent;
+			
+			// Generate a suggestion ID if we don't have one stored
+			// In a real app, this should be stored when the suggestion is generated
+			let suggestionId = window.currentSuggestionId || `feedback_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+			
+			console.log('📝 Sending feedback:', {
+				suggestionId: suggestionId,
+				isHelpful: isHelpful,
+				suggestionText: suggestionText.substring(0, 50) + '...'
+			});
 
-            } catch (error) {
-                console.error('Error sending feedback:', error);
-            }
-        }
+			// ✅ FIXED: Use correct field names that match backend validation
+			const feedbackPayload = {
+				suggestionId: suggestionId,                    // ✅ Required field
+				userAction: isHelpful ? 'accept' : 'reject',   // ✅ Correct field name & values
+				rating: isHelpful ? 5 : 2,                     // ✅ Optional but helpful
+				comment: isHelpful ? 'Helpful suggestion' : 'Not helpful'  // ✅ Optional comment
+			};
+
+			console.log('📤 Sending payload:', feedbackPayload);
+
+			const response = await fetch(`${API_BASE_URL}/api/ai/feedback`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${token}`
+				},
+				body: JSON.stringify(feedbackPayload)
+			});
+
+			console.log('📊 Feedback response status:', response.status);
+			
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('❌ Feedback error response:', errorText);
+				throw new Error(`Feedback failed: ${response.status} - ${errorText}`);
+			}
+
+			const result = await response.json();
+			console.log('✅ Feedback success:', result);
+
+			// Update UI
+			document.getElementById('status').textContent = 
+				isHelpful ? 'Thank you for the positive feedback!' : 'Thank you for the feedback!';
+			
+			setTimeout(() => {
+				document.getElementById('status').textContent = 'Ready to assist with your email writing';
+			}, 3000);
+
+		} catch (error) {
+			console.error('💥 Error sending feedback:', error);
+			document.getElementById('status').textContent = 'Failed to send feedback';
+			
+			setTimeout(() => {
+				document.getElementById('status').textContent = 'Ready to assist with your email writing';
+			}, 3000);
+		}
+	}
 
         // Modified initialization function to include onboarding check
         function initializeOffice() {
